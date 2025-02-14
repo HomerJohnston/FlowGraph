@@ -164,7 +164,13 @@ public:
 	void ValidateGraphNode(FFlowMessageLog& MessageLog) const;
 
 protected:
-	bool ShouldReconstructNode() const;
+	bool CanReconstructNode() const;
+	
+	bool TryUpdateNodePins() const;
+	
+	bool TryUpdateAutoDataPins() const;
+
+	bool CheckGraphPinsMatchNodePins();
 	
 //////////////////////////////////////////////////////////////////////////
 // Pins
@@ -198,10 +204,6 @@ public:
 	// Call node and graph updates manually, if using bBatchRemoval
 	void RemoveInstancePin(UEdGraphPin* Pin);
 
-protected:
-	// Create pins from the context asset, i.e. Sequencer events
-	void RefreshContextPins();
-	
 public:
 	// UEdGraphNode
 	virtual void GetPinHoverText(const UEdGraphPin& Pin, FString& HoverTextOut) const override;
@@ -311,8 +313,6 @@ protected:
 	virtual void ResetNodeOwner();
 
 	void LogError(const FString& MessageToLog, const UFlowNodeBase* FlowNodeBase) const;
-
-	bool HavePinsChanged() const;
 
 public:
 	
