@@ -292,7 +292,7 @@ void UFlowGraphNode::ReconstructNode()
 	}
 	
 	bIsReconstructingNode = true;
-	FScopedTransaction Transaction(LOCTEXT("ReconstructNode", "Reconstruct Node"));
+	FScopedTransaction Transaction(LOCTEXT("ReconstructNode", "Reconstruct Node"), !GUndo);
 
 	bool bNodeDataPinsUpdated = TryUpdateAutoDataPins(); // This must be called first, it updates the underlying data for data pins of the flow node 
 	bool bNodeExecPinsUpdated = TryUpdateNodePins(); // Updates all pins of the flow node (native pins, meta auto pins, and context pins which include data pins for now)
@@ -322,10 +322,6 @@ void UFlowGraphNode::ReconstructNode()
 		}
 	
 		bNeedsFullReconstruction = false;
-	}
-	else
-	{
-		Transaction.Cancel();
 	}
 
 	// This ensures the graph editor 'Refresh' button still rebuilds all of the graph widgets even if the FlowGraphNode has nothing to update
@@ -1573,6 +1569,8 @@ void UFlowGraphNode::InsertSubNodeAt(UFlowGraphNode* SubNode, int32 DropIndex)
 
 void UFlowGraphNode::DestroyNode()
 {
+	bIsDestroyingNode = true;
+	
 	if (ParentNode)
 	{
 		ParentNode->RemoveSubNode(this);
@@ -1585,6 +1583,8 @@ void UFlowGraphNode::DestroyNode()
 	}
 
 	UEdGraphNode::DestroyNode();
+	
+	bIsDestroyingNode = false;
 }
 
 bool UFlowGraphNode::UsesBlueprint() const
@@ -1667,7 +1667,7 @@ void UFlowGraphNode::ValidateGraphNode(FFlowMessageLog& MessageLog) const
 bool UFlowGraphNode::CanReconstructNode() const
 {
 	// Global states that should prevent ReconstructNode from running
-	if (GIsTransacting || bIsReconstructingNode)
+	if (GIsTransacting || bIsReconstructingNode || bIsDestroyingNode)
 	{
 		return false;
 	}
@@ -1689,9 +1689,9 @@ bool UFlowGraphNode::CanReconstructNode() const
 	// Don't do anything if the Flow Graph is preventing it
 	if (const UFlowGraph* FlowGraph = GetFlowGraph())
 	{
-		if (FlowGraph->IsLoadingGraph())
+		if (FlowGraph->IsSavingGraph())
 		{
-			//return false;
+			return false;
 		}
 
 		if (FlowGraph->IsLocked())

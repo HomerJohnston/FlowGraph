@@ -38,6 +38,7 @@ private:
 
 	bool bBlueprintCompilationPending;
 	bool bIsReconstructingNode;
+	bool bIsDestroyingNode;
 	bool bNeedsFullReconstruction;
 	static bool bFlowAssetsLoaded;
 
