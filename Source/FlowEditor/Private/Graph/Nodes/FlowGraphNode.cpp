@@ -1672,17 +1672,15 @@ bool UFlowGraphNode::CanReconstructNode() const
 		return false;
 	}
 	
-	// Corrupt? This should never happen
-	if (!IsValid(NodeInstance))
+	// This should never happen
+	if (!ensureMsgf(IsValid(NodeInstance), TEXT("FlowGraphNode has no NodeInstance, graph may be corrupt! Flow Asset: %s"), *GetFlowAsset()->GetName()))
 	{
-		UE_LOG(LogFlow, Error, TEXT("FlowGraphNode has no NodeInstance, graph may be corrupt!"))
 		return false;
 	}
 
-	// Corrupt? This should never happen
-	if (!IsValid(GetGraph()))
+	// This should never happen
+	if (!ensureMsgf(IsValid(GetGraph()), TEXT("FlowGraphNode has no owner graph, graph may be corrupt! Flow Node Instance: %s"), *NodeInstance->GetName()))
 	{
-		UE_LOG(LogFlow, Error, TEXT("FlowGraphNode has no owner graph, graph may be corrupt!"))
 		return false;
 	}
 
@@ -1734,13 +1732,15 @@ bool CheckPinsMatch(const TArray<FFlowPin>& LeftPins, const TArray<FFlowPin>& Ri
 	
 	for (const FFlowPin& Left : LeftPins)
 	{
-		// For each required pin, make sure the existing pins array contains a pin that matches by name and type 
-		if (!RightPins.ContainsByPredicate( [&Left] (const FFlowPin& Right)
+		auto PinsAreEqualPredicate = [&Left] (const FFlowPin& Right)
 		{
 			bool bNameMatch = Left.PinName == Right.PinName;
 			bool bTypematch = Left.GetPinType() == Right.GetPinType();
 			return bNameMatch && bTypematch;
-		} ))
+		};
+		
+		// For each required pin, make sure the existing pins array contains a pin that matches by name and type 
+		if (!RightPins.ContainsByPredicate(PinsAreEqualPredicate))
 		{
 			// Something didn't match!
 			return false;
@@ -1814,6 +1814,8 @@ bool UFlowGraphNode::TryUpdateNodePins() const
 	
 	if (!CheckPinsMatch(RequiredNodeInputPins, ExistingNodeInputPins))
 	{
+		FlowNodeInstance->Modify();
+		
 		FlowNodeInstance->InputPins.Empty(RequiredNodeInputPins.Num());
 		FlowNodeInstance->AddInputPins(RequiredNodeInputPins); // We could just copy it, but this function could do more things one day
 
@@ -1822,6 +1824,8 @@ bool UFlowGraphNode::TryUpdateNodePins() const
 
 	if (!CheckPinsMatch(RequiredNodeOutputPins, ExistingNodeOutputPins))
 	{
+		FlowNodeInstance->Modify();
+		
 		FlowNodeInstance->OutputPins.Empty(RequiredNodeOutputPins.Num());
 		FlowNodeInstance->AddOutputPins(RequiredNodeOutputPins); // We could just copy it, but this function could do more things one day
 
